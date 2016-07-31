@@ -1,0 +1,137 @@
+---
+title: "RR1"
+author: "Huang,Zhen"
+date: "2016年7月30日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading and preprocessing the data
+
+We first load the data and briefly scan through the data:
+
+```{r}
+data <- read.csv("activity.csv", header = TRUE)
+head(data)
+tail(data)
+```
+
+It can be found that there are some NAs in steps variable, the proportion of NAs in steps variable is:
+
+```{r}
+sum(is.na(data$steps)) / length(data$steps)
+```
+
+Actually in our preprocessing process we should deal with missing data, but since it is asked to be done later in this assignment, we will leave these NAs here.(It can be demonstrated that the other two variables do not have NA values)
+
+```{r}
+sum(is.na(data$date))
+sum(is.na(data$interval))
+```
+
+So now we do no transformations for the data.
+
+## What is mean total number of steps taken per day?
+
+The total number of steps taken per day can be calculated as follows:
+
+```{r}
+sumsteps <- tapply(data$steps, data$date, sum, na.rm = TRUE)
+sumsteps
+```
+
+A histogram summarizing the frequencies of sumsteps is shown below:
+
+```{r}
+hist(sumsteps)
+```
+
+Also, the mean and median of sumsteps are presented here:
+
+```{r}
+mean(sumsteps)
+```
+
+```{r}
+median(sumsteps)
+```
+
+## What is the average daily activity pattern?
+
+Average daily activity pattern:
+```{r}
+avesteps <- tapply(data$steps, data$interval, mean, na.rm = TRUE)
+plot(avesteps, type = "l", xlab = "interval")
+```
+
+Which contains the maximum number of steps:
+```{r}
+max(avesteps, na.rm = TRUE)
+names(which.max(avesteps)) ## which interval is the max
+```
+
+## Imputing missing values
+
+As demonstrated before, the total missing value number is:(We do not have missing values in date or interval)
+```{r}
+sum(is.na(data$steps))
+```
+
+I use predictive mean matching(pmm method in mice) to impute missing data:
+```{r}
+suppressMessages(library(mice))
+nData <- complete(mice(data, m = 1, printFlag = FALSE))
+```
+
+Mean and median total number of steps are:
+
+```{r}
+nSumsteps <- tapply(nData$steps, nData$date, sum, na.rm = TRUE)
+hist(nSumsteps, main = "Histogram of new sumsteps")
+mean(nSumsteps)
+median(nSumsteps)
+```
+
+The mean and median are greater than the previous calculated values, and this is due to the contributions of new imputed values. The impacts of imputed values for each day is:
+
+```{r}
+nSumsteps - sumsteps
+```
+
+The total impact is:
+
+```{r}
+sum(nSumsteps - sumsteps)
+```
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+To answer this question, first we will have to generate a factor indicating whether a specific day is a weekday. The code is as below:
+
+```{r}
+suppressMessages(library(chron))
+isWeekday <- function(day) {
+    if(is.weekend(day))
+       return ("weekend")
+    else
+       return ("weekday")
+}
+nData$weekday <- sapply(nData$date, isWeekday)
+head(nData) # show the structure of the new data
+```
+
+Then we can draw the plots:
+
+```{r}
+weekdayData = nData[nData$weekday == "weekday",]
+weekendData = nData[nData$weekday == "weekend",]
+avedaySteps <- tapply(weekdayData$steps, weekdayData$interval, mean, na.rm = TRUE)
+aveendSteps <- tapply(weekendData$steps, weekendData$interval, mean, na.rm = TRUE)
+plot(avedaySteps, type = "l", xlab = "interval", main = "weekday patterns") 
+plot(aveendSteps, type = "l", xlab = "interval", main = "weekend patterns")
+```
+
+
